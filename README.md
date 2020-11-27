@@ -5,8 +5,8 @@ This library locate the file location and directory path of your current running
 ## How to use this package
 ```
 import locate
-print("This file is: ", locate.this_file())
-print("This file is located in: ", locate.this_file())
+print("This file is:", locate.this_file())
+print("This file is located in:", locate.this_file())
 ```
 
 ## Motivation
