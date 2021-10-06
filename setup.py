@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="locate",
-    version="0.0.1",
+    version="1.0.0",
     author="Heetbeet",
     author_email="sfstreicher@gmail.com",
     description="Locate the file location of your current running script.",
