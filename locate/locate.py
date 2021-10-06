@@ -1,4 +1,4 @@
-"""
+r"""
 Convenience functions for accessing the file path information of a script and allowing files to be imported
 from the neighboring locations.
 
@@ -8,7 +8,7 @@ from the neighboring locations.
 >>> import shutil
 
 Return this_dir.py as it's caller?
->>> this_file() == Path(os.path.abspath(__file__))
+>>> _this_file() == Path(os.path.abspath(__file__))
 True
 
 >>> this_dir() == Path(os.path.abspath(__file__)).parent
@@ -20,36 +20,20 @@ Create a dummy file and test it's file path information
 ... # Make sure "locate" is importable
 ... import sys
 ... import os
-... sys.path.append(os.path.abspath(r"{__file__}/.."))
+... sys.path.insert(0, os.path.abspath(r"{__file__}/.."))
 ...
 ... # Use locate in this script
 ... import locate
-... print(locate.this_file())
 ... print(locate.this_dir())
 ... '''
 >>> with open(tmpfile, 'w') as f:
 ...     _ = f.write(fstr)
 
 >>> ret = subprocess.check_output([sys.executable, str(tmpfile)])
->>> sfile, sdir = ret.decode('utf-8').split()
-
->>> str(sfile).lower() == str(tmpfile.resolve()).lower()
-True
+>>> sdir = ret.decode('utf-8').strip()
 
 >>> str(sdir).lower() == str(tmpfile.resolve().parent).lower()
 True
-
-Test getting file information from the REPL
->>> ret = subprocess.check_output([
-...     sys.executable, "-c",
-...         'import sys;'
-...         'import os;'
-...         f'sys.path.append(os.path.abspath(r"{__file__}/.."));'
-...         'from locate import this_file;'
-...         'print(this_file())'
-... ])
->>> ret.strip()
-b'None'
 
 Test getting directory information from the REPL
 >>> os.chdir(tempfile.gettempdir())
@@ -57,39 +41,58 @@ Test getting directory information from the REPL
 ...     sys.executable, "-c",
 ...         'import sys;'
 ...         'import os;'
-...         f'sys.path.append(os.path.abspath(r"{__file__}/.."));'
+...         f'sys.path.insert(0, os.path.abspath(r"{__file__}/.."));'
 ...         'from locate import this_dir;'
-...         'print(this_dir())'
+...         'print(this_dir());'
+...         'print(os.getcwd());'
 ... ])
->>> ret = ret.decode('utf-8').strip()
->>> ret.lower() == os.path.abspath(tempfile.gettempdir()).lower()
+>>> ret, retcwd = ret.decode('utf-8').strip().replace('\r','').split('\n')
+>>> ret.lower() == os.path.abspath(retcwd).lower()
+True
+
+>>> ret.lower() == os.path.abspath(os.getcwd()).lower()
 True
 
 Test that relative import without add_relative_to_path throws an error
 >>> tmpdir = Path(tempfile.mktemp()).joinpath('nest')
 >>> os.makedirs(tmpdir)
->>> tmpdir.parent.joinpath('foo.py').touch()
+>>> tmpdir.parent.joinpath('foo519efa14c17747dfb79fcbb766491c0b.py').touch()
 >>> _ = tmpdir.joinpath('bar.py').open('w').write(f'''
-... import foo
+... import foo519efa14c17747dfb79fcbb766491c0b
 ... ''')
 >>> subprocess.check_output([sys.executable, tmpdir.joinpath('bar.py')], stderr=subprocess.DEVNULL) # doctest: +ELLIPSIS
 Traceback (most recent call last):
 ...
 subprocess.CalledProcessError: Command '['...python...', ...bar.py...]' returned non-zero exit status 1.
 
-Test relative imports using add_relative_to_path
+Test relative imports using allow_relative_location_imports
 >>> _ = tmpdir.joinpath('bar.py').open('w').write(f'''
 ... # Make sure "locate" is importable
 ... import sys
 ... import os
-... sys.path.append(os.path.abspath(r"{__file__}/.."))
+... sys.path.insert(0, os.path.abspath(r"{__file__}/.."))
 ... import locate
 ...
 ... locate.allow_relative_location_imports('..')
-... import foo
+... import foo519efa14c17747dfb79fcbb766491c0b
 ... ''')
 >>> subprocess.check_output([sys.executable, tmpdir.joinpath('bar.py')])
 b''
+
+Test relative imports using force_relative_location_imports
+>>> _ = tmpdir.joinpath('bar.py').open('w').write(f'''
+... # Make sure "locate" is importable
+... import sys
+... import os
+... sys.path.insert(0, os.path.abspath(r"{__file__}/.."))
+... import locate
+...
+... locate.force_relative_location_imports('..')
+... import foo519efa14c17747dfb79fcbb766491c0b
+... ''')
+>>> subprocess.check_output([sys.executable, tmpdir.joinpath('bar.py')])
+b''
+
 
 >>> os.unlink(tmpfile)
 >>> shutil.rmtree(tmpdir)
@@ -117,7 +120,7 @@ def _file_path_from_stack_frame(stack_frame: inspect.FrameInfo.frame) -> Union[P
         return None
 
 
-def this_file() -> Union[Path, None]:
+def _this_file() -> Union[Path, None]:
     """
     Get the full path of the caller's source code file location. If the caller is not calling from a source code file,
     such as calling from the REPL, return None.
@@ -149,8 +152,10 @@ def this_dir() -> Union[Path, None]:
 
 def allow_relative_location_imports(relative_path: Union[str, Path] = '.') -> None:
     """
-    Add directories that are relative to the caller's directory location to the python path, in order
-    to import files from that directory.
+    Resolve `relative_path` relative to the caller's directory path, and add it to sys.path. This will allow you to
+    import files and modules directly from that directory. Note that previously defined import paths (such as the
+    internal site-packages directory) will take importing preference; for inverse behaviour, use
+    `force_relative_location_imports`.
 
     """
     # Same logic than this_dir, but cannot call that function without messing up the stack frame
@@ -168,6 +173,24 @@ def allow_relative_location_imports(relative_path: Union[str, Path] = '.') -> No
         sys.path.append(str(path_to_add))
 
 
-# Add allow_neighbor_imports as an alias to allow_relative_location_imports, since we cannot do
-# "def allow_neighbor_imports() = allow_relative_location_imports()", since it will mess up the stack trace.
-allow_neighbor_imports = allow_relative_location_imports
+def force_relative_location_imports(relative_path: Union[str, Path] = '.') -> None:
+    """
+    Resolve `relative_path` relative to the caller's directory path, and add it to sys.path. This will allow you to
+    import files and modules directly from that directory. Note that this path takes preference over previously defined
+    import paths (such as the internal site-packages directory); for inverse behaviour, use
+    allow_relative_location_imports.
+
+    """
+    # Same logic than this_dir, but cannot call that function without messing up the stack frame
+    stack = inspect.stack()
+    caller_info = stack[1]
+    filepath = _file_path_from_stack_frame(caller_info.frame)
+
+    if filepath is None:
+        dir_path = Path(os.path.abspath(os.getcwd()))
+    else:
+        dir_path = filepath.parent
+
+    path_to_add = dir_path.joinpath(relative_path).resolve()
+    if path_to_add not in sys.path:
+        sys.path.insert(0, str(path_to_add))
