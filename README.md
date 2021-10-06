@@ -16,13 +16,13 @@ print(f"I can now import from: {locate.this_dir().joinpath('foo')}")
 ```
 
 ## Motivation
-This package is for people who frequently use the directory of their scripts for storing files and custom modules, and don't want their pipeline to break from an interactive shell. This is based on the way Julia thinks about the immediate directory through its [@\_\_DIR\_\_ macro](https://docs.julialang.org/en/v1/base/file/#Base.@__DIR__).
+This package is for people who frequently use the directory of their scripts for storing files and custom modules, and don't want their pipeline to break from an interactive shell. This is based on the way Julia thinks about the immediate directory through its [@\_\_DIR\_\_](https://docs.julialang.org/en/v1/base/base/#Base.@__DIR__) macro.
 
 `locate.this_dir()` is defined as:
 
  - When running a `.py` file, this is the file's base directory. 
  - When running an `.ipyn` notebook, this is the current working directory. This is the desired/expected result since Jupyter sets the working directory as the `.ipynb` base directory by default.
- - When running in a REPL, this is the current working directory. This is similar to Julia's `@__DIR__` macro https://docs.julialang.org/en/v1/base/file/#Base.@__DIR__
+ - When running in a REPL, this is the current working directory. This is similar to Julia's [@\_\_DIR\_\_](https://docs.julialang.org/en/v1/base/base/#Base.@__DIR__) macro.
 
 ## Other considerations
 For a good discussion on retrieving the current Python path, see https://stackoverflow.com/questions/3718657
