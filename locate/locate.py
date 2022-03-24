@@ -7,10 +7,6 @@ from the neighboring locations.
 >>> import sys
 >>> import shutil
 
-Return this_dir.py as it's caller?
->>> _this_file() == Path(os.path.abspath(__file__))
-True
-
 >>> this_dir() == Path(os.path.abspath(__file__)).parent
 True
 
@@ -65,7 +61,7 @@ Traceback (most recent call last):
 ...
 subprocess.CalledProcessError: Command '['...python...', ...bar.py...]' returned non-zero exit status 1.
 
-Test relative imports using allow_relative_location_imports
+Test relative imports using append_sys_path
 >>> _ = tmpdir.joinpath('bar.py').open('w').write(f'''
 ... # Make sure "locate" is importable
 ... import sys
@@ -73,13 +69,13 @@ Test relative imports using allow_relative_location_imports
 ... sys.path.insert(0, os.path.abspath(r"{__file__}/.."))
 ... import locate
 ...
-... locate.allow_relative_location_imports('..')
+... locate.append_sys_path('..')
 ... import foo519efa14c17747dfb79fcbb766491c0b
 ... ''')
 >>> subprocess.check_output([sys.executable, tmpdir.joinpath('bar.py')])
 b''
 
-Test relative imports using force_relative_location_imports
+Test relative imports using prepend_sys_path
 >>> _ = tmpdir.joinpath('bar.py').open('w').write(f'''
 ... # Make sure "locate" is importable
 ... import sys
@@ -87,25 +83,11 @@ Test relative imports using force_relative_location_imports
 ... sys.path.insert(0, os.path.abspath(r"{__file__}/.."))
 ... import locate
 ...
-... locate.force_relative_location_imports('..')
+... locate.prepend_sys_path('..')
 ... import foo519efa14c17747dfb79fcbb766491c0b
 ... ''')
 >>> subprocess.check_output([sys.executable, tmpdir.joinpath('bar.py')])
 b''
-
-
->>> _ = tmpdir.joinpath('baz.py').open('w').write(f'''
-... # Make sure "locate" is importable
-... import sys
-... import os
-... sys.path.insert(0, os.path.abspath(r"{__file__}/.."))
-... import locate
-...
-... with locate.import_from('./dummy_directory'):
-...     print(sys.path[0])
-... ''')
->>> subprocess.check_output([sys.executable, tmpdir.joinpath('baz.py')])
-
 
 >>> os.unlink(tmpfile)
 >>> shutil.rmtree(tmpdir)
@@ -117,33 +99,18 @@ import os
 import sys
 from pathlib import Path
 from typing import Union
+import uuid
 
 
-def _file_path_from_stack_frame(stack_frame: inspect.FrameInfo.frame) -> Union[Path, None]:
-    """
-    Helper function to get the file location of a stack frame
-
-    """
-    caller_globals = stack_frame.f_globals
-
-    if "__file__" in caller_globals:
-        # Don't use Path.resolve, it will resolve to a symlink's true location, which is not a good definition
-        # of what the caller's filepath is.
-        return Path(os.path.abspath(caller_globals["__file__"]))
-    else:
-        return None
-
-
-def _this_file() -> Union[Path, None]:
-    """
-    Get the full path of the caller's source code file location. If the caller is not calling from a source code file,
-    such as calling from the REPL, return None.
-
-    """
-    stack = inspect.stack()
+def _this_dir(stack):
     caller_info = stack[1]
-
-    return _file_path_from_stack_frame(caller_info.frame)
+    caller_globals = caller_info.frame.f_globals
+    # Don't use Path.resolve, it will resolve to a symlink's true location, which might not be a good definition
+    # of what the caller's filepath is. TODO: BJ check this assumption.
+    if "__file__" in caller_globals:
+        return Path(os.path.abspath(caller_globals["__file__"])).parent
+    else:
+        return Path(os.path.abspath(os.getcwd()))
 
 
 def this_dir() -> Union[Path, None]:
@@ -152,90 +119,53 @@ def this_dir() -> Union[Path, None]:
     Get a directory location associated with the caller of this function. If the caller is calling from a source
     code file, return the full path of the directory of that file, otherwise return the full path of the current
     working directory.
-
     """
-    stack = inspect.stack()
-    caller_info = stack[1]
-    filepath = _file_path_from_stack_frame(caller_info.frame)
-
-    if filepath is None:
-        return Path(os.path.abspath(os.getcwd()))
-    else:
-        return filepath.parent
+    return _this_dir(inspect.stack())
 
 
-def allow_relative_location_imports(relative_path: Union[str, Path] = '.') -> None:
+class append_sys_path:
     """
     Resolve `relative_path` relative to the caller's directory path, and add it to sys.path. This will allow you to
     import files and modules directly from that directory. Note that previously defined import paths (such as the
     internal site-packages directory) will take importing preference; for inverse behaviour, use
-    `force_relative_location_imports`.
-
+    `prepend_sys_path`.
     """
-    # Same logic than this_dir, but cannot call that function without messing up the stack frame
-    stack = inspect.stack()
-    caller_info = stack[1]
-    filepath = _file_path_from_stack_frame(caller_info.frame)
+    def __init__(self, relative_path: Union[str, Path] = '.') -> None:
+        dir_path = _this_dir(inspect.stack())
+        self.added_path = _StrWithAnID(dir_path.joinpath(relative_path).resolve())
+        sys.path.append(str(self.added_path))
 
-    if filepath is None:
-        dir_path = Path(os.path.abspath(os.getcwd()))
-    else:
-        dir_path = filepath.parent
+    def __enter__(self):
+        pass
 
-    path_to_add = dir_path.joinpath(relative_path).resolve()
-    if path_to_add not in sys.path:
-        sys.path.append(str(path_to_add))
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        for i in range(len(sys.path), -1, -1):
+            if hasattr(sys.path[i], "uniqueid") and getattr(sys.path[i], "uniqueid") == self.added_path.uniqueid:
+                sys.path.pop(i)
 
 
-def force_relative_location_imports(relative_path: Union[str, Path] = '.') -> None:
+class prepend_sys_path:
     """
     Resolve `relative_path` relative to the caller's directory path, and add it to sys.path. This will allow you to
     import files and modules directly from that directory. Note that this path takes preference over previously defined
     import paths (such as the internal site-packages directory); for inverse behaviour, use
-    allow_relative_location_imports.
-
+    append_sys_path.
     """
-    # Same logic than this_dir, but cannot call that function without messing up the stack frame
-    stack = inspect.stack()
-    caller_info = stack[1]
-    filepath = _file_path_from_stack_frame(caller_info.frame)
+    def __init__(self, relative_path: Union[str, Path] = '.') -> None:
+        dir_path = _this_dir(inspect.stack())
+        self.added_path = _StrWithAnID(dir_path.joinpath(relative_path).resolve())
+        sys.path.insert(0, str(self.added_path))
 
-    if filepath is None:
-        dir_path = Path(os.path.abspath(os.getcwd()))
-    else:
-        dir_path = filepath.parent
+    def __enter__(self):
+        pass
 
-    path_to_add = dir_path.joinpath(relative_path).resolve()
-    if path_to_add not in sys.path:
-        sys.path.insert(0, str(path_to_add))
-
-from contextlib import contextmanager
-import uuid
-
-@contextmanager
-def import_from(relative_path: Union[str, Path] = '.') -> None:
-    stack = inspect.stack()
-    caller_info = stack[1]
-    filepath = _file_path_from_stack_frame(caller_info.frame)
-
-    if filepath is None:
-        dir_path = Path(os.path.abspath(os.getcwd()))
-    else:
-        dir_path = filepath.parent
-
-    path_to_add = id_str(dir_path.joinpath(relative_path).resolve())
-    if path_to_add not in sys.path:
-        sys.path.insert(0, str(path_to_add))
-
-    yield
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        for i in range(len(sys.path)):
+            if hasattr(sys.path[i], "uniqueid") and getattr(sys.path[i], "uniqueid") == self.added_path.uniqueid:
+                sys.path.pop(i)
 
 
-    for i in range(len(sys.path)):
-        if hasattr(sys.path[i], "uniqueid") and getattr(sys.path[i], "uniqueid") == path_to_add.uniqueid:
-            sys.path.pop(i)
-
-
-class id_str(str):
+class _StrWithAnID(str):
     def __init__(self, *args, **kwargs):
         super().__init__()
         self.uniqueid = str(uuid.uuid4())
