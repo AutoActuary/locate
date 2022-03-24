@@ -94,8 +94,22 @@ Test relative imports using force_relative_location_imports
 b''
 
 
+>>> _ = tmpdir.joinpath('baz.py').open('w').write(f'''
+... # Make sure "locate" is importable
+... import sys
+... import os
+... sys.path.insert(0, os.path.abspath(r"{__file__}/.."))
+... import locate
+...
+... with locate.import_from('./dummy_directory'):
+...     print(sys.path[0])
+... ''')
+>>> subprocess.check_output([sys.executable, tmpdir.joinpath('baz.py')])
+
+
 >>> os.unlink(tmpfile)
 >>> shutil.rmtree(tmpdir)
+
 """
 
 import inspect
@@ -194,3 +208,34 @@ def force_relative_location_imports(relative_path: Union[str, Path] = '.') -> No
     path_to_add = dir_path.joinpath(relative_path).resolve()
     if path_to_add not in sys.path:
         sys.path.insert(0, str(path_to_add))
+
+from contextlib import contextmanager
+import uuid
+
+@contextmanager
+def import_from(relative_path: Union[str, Path] = '.') -> None:
+    stack = inspect.stack()
+    caller_info = stack[1]
+    filepath = _file_path_from_stack_frame(caller_info.frame)
+
+    if filepath is None:
+        dir_path = Path(os.path.abspath(os.getcwd()))
+    else:
+        dir_path = filepath.parent
+
+    path_to_add = id_str(dir_path.joinpath(relative_path).resolve())
+    if path_to_add not in sys.path:
+        sys.path.insert(0, str(path_to_add))
+
+    yield
+
+
+    for i in range(len(sys.path)):
+        if hasattr(sys.path[i], "uniqueid") and getattr(sys.path[i], "uniqueid") == path_to_add.uniqueid:
+            sys.path.pop(i)
+
+
+class id_str(str):
+    def __init__(self, *args, **kwargs):
+        super().__init__()
+        self.uniqueid = str(uuid.uuid4())
