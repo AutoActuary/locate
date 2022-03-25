@@ -98,15 +98,22 @@ import inspect
 import os
 import sys
 from pathlib import Path
-from typing import Union
+from typing import Union, Optional
 import uuid
+import warnings
+
+
+class _StrWithAnID(str):
+    def __init__(self, *args, **kwargs):
+        super().__init__()
+        self.unique_id = str(uuid.uuid4())
 
 
 def _this_dir(stack):
     caller_info = stack[1]
     caller_globals = caller_info.frame.f_globals
-    # Don't use Path.resolve, it will resolve to a symlink's true location, which might not be a good definition
-    # of what the caller's filepath is. TODO: BJ check this assumption.
+
+    # Use os.path.abspath rather than Path.resolve, since Path.resolve will resolve symlinks to their sources
     if "__file__" in caller_globals:
         return Path(os.path.abspath(caller_globals["__file__"])).parent
     else:
@@ -128,11 +135,14 @@ class append_sys_path:
     Resolve `relative_path` relative to the caller's directory path, and add it to sys.path. This will allow you to
     import files and modules directly from that directory. Note that previously defined import paths (such as the
     internal site-packages directory) will take importing preference; for inverse behaviour, use
-    `prepend_sys_path`.
+    `prepend_sys_path`. This can be used as a context manager `with append_sys_path()` for temporary effect.
     """
-    def __init__(self, relative_path: Union[str, Path] = '.') -> None:
-        dir_path = _this_dir(inspect.stack())
-        self.added_path = _StrWithAnID(dir_path.joinpath(relative_path).resolve())
+    def __init__(
+            self,
+            relative_path: Union[str, Path] = '.'
+    ) -> None:
+        # Use os.path.abspath rather than Path.resolve, since Path.resolve will resolve symlinks to their sources
+        self.added_path = _StrWithAnID(os.path.abspath(Path(_this_dir(inspect.stack()), relative_path)))
         sys.path.append(str(self.added_path))
 
     def __enter__(self):
@@ -140,7 +150,7 @@ class append_sys_path:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         for i in range(len(sys.path), -1, -1):
-            if hasattr(sys.path[i], "uniqueid") and getattr(sys.path[i], "uniqueid") == self.added_path.uniqueid:
+            if hasattr(sys.path[i], "unique_id") and getattr(sys.path[i], "unique_id") == self.added_path.unique_id:
                 sys.path.pop(i)
 
 
@@ -149,11 +159,14 @@ class prepend_sys_path:
     Resolve `relative_path` relative to the caller's directory path, and add it to sys.path. This will allow you to
     import files and modules directly from that directory. Note that this path takes preference over previously defined
     import paths (such as the internal site-packages directory); for inverse behaviour, use
-    append_sys_path.
+    `append_sys_path`. This can be used as a context manager `with append_sys_path()` for temporary effect.
     """
-    def __init__(self, relative_path: Union[str, Path] = '.') -> None:
-        dir_path = _this_dir(inspect.stack())
-        self.added_path = _StrWithAnID(dir_path.joinpath(relative_path).resolve())
+    def __init__(
+            self,
+            relative_path: Union[str, Path] = '.'
+    ) -> None:
+        # Use os.path.abspath rather than Path.resolve, since Path.resolve will resolve symlinks to their sources
+        self.added_path = _StrWithAnID(os.path.abspath(Path(_this_dir(inspect.stack()), relative_path)))
         sys.path.insert(0, str(self.added_path))
 
     def __enter__(self):
@@ -161,11 +174,29 @@ class prepend_sys_path:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         for i in range(len(sys.path)):
-            if hasattr(sys.path[i], "uniqueid") and getattr(sys.path[i], "uniqueid") == self.added_path.uniqueid:
+            if hasattr(sys.path[i], "uniqueid") and getattr(sys.path[i], "uniqueid") == self.added_path.unique_id:
                 sys.path.pop(i)
 
 
-class _StrWithAnID(str):
-    def __init__(self, *args, **kwargs):
-        super().__init__()
-        self.uniqueid = str(uuid.uuid4())
+def allow_relative_location_imports(relative_path: Union[str, Path] = '.') -> None:
+    """
+    Deprecated deprecated in favor of `append_sys_path`
+    """
+    warnings.warn(
+        "`allow_relative_location_imports` is deprecated in favor of `append_sys_path` and will be removed locate "
+        "4.0.0",
+        category=DeprecationWarning
+    )
+    sys.path.append(os.path.abspath(Path(_this_dir(inspect.stack()), relative_path)))
+
+
+def force_relative_location_imports(relative_path: Union[str, Path] = '.') -> None:
+    """
+    Deprecated in favor of `prepend_sys_path`
+    """
+    warnings.warn(
+        "`force_relative_location_imports` is deprecated in favor of `prepend_sys_path` and will be removed in locate "
+        "4.0.0",
+        category=DeprecationWarning
+    )
+    sys.path.insert(0, os.path.abspath(Path(_this_dir(inspect.stack()), relative_path)))
