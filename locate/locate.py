@@ -104,7 +104,7 @@ def allow_relative_location_imports(relative_path: Union[str, Path] = ".") -> No
     """
     warnings.warn(
         "`allow_relative_location_imports` is deprecated in favor of `append_sys_path` and will be removed locate "
-        "4.0.0",
+        "2.0.0",
         category=DeprecationWarning,
     )
     sys.path.append(os.path.abspath(Path(_this_dir(inspect.stack()), relative_path)))
@@ -116,7 +116,7 @@ def force_relative_location_imports(relative_path: Union[str, Path] = ".") -> No
     """
     warnings.warn(
         "`force_relative_location_imports` is deprecated in favor of `prepend_sys_path` and will be removed in locate "
-        "4.0.0",
+        "2.0.0",
         category=DeprecationWarning,
     )
     sys.path.insert(0, os.path.abspath(Path(_this_dir(inspect.stack()), relative_path)))
