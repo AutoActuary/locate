@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="locate",
-    version="1.0.0",
+    version="1.1.0",
     author="Heetbeet",
     author_email="sfstreicher@gmail.com",
     description="Locate the file location of your current running script.",
@@ -18,6 +18,6 @@ setuptools.setup(
         "License :: Other/Proprietary License",
         "Operating System :: OS Independent",
     ],
-    python_requires='>=3.4',
-    install_requires=[]
+    python_requires=">=3.4",
+    install_requires=[],
 )
