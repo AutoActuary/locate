@@ -7,7 +7,7 @@ import inspect
 import os
 import sys
 from pathlib import Path
-from typing import Union
+from typing import Union, List
 import uuid
 import warnings
 
@@ -18,7 +18,7 @@ class _StrWithAnID(str):
         self.unique_id = uuid.uuid4()
 
 
-def _this_dir(stack: inspect.stack) -> Path:
+def _this_dir(stack: List[inspect.FrameInfo]) -> Path:
     caller_info = stack[1]
     caller_globals = caller_info.frame.f_globals
 
@@ -29,7 +29,7 @@ def _this_dir(stack: inspect.stack) -> Path:
         return Path(os.path.abspath(os.getcwd()))
 
 
-def this_dir() -> Union[Path, None]:
+def this_dir() -> Path:
     """
     This function mimics the @__DIR__ macro from Julia: https://docs.julialang.org/en/v1/base/file/#Base.@__DIR__
     Get a directory location associated with the caller of this function. If the caller is calling from a source
@@ -57,7 +57,7 @@ class append_sys_path:
     def __enter__(self):
         pass
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, *args):
         i = len(sys.path) - 1
         while i >= 0:
             if (
@@ -86,7 +86,7 @@ class prepend_sys_path:
     def __enter__(self):
         pass
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, *args):
         i = 0
         while i < len(sys.path):
             if (
