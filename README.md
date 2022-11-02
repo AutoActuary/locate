@@ -12,8 +12,9 @@ This library exposes three functions/callables
 ```python
 import locate
 from pathlib import Path
+this_dir = locate.this_dir()
 
-print(f"This file is located in: {locate.this_dir()}")
+print(f"This file is located in: {this_dir}")
 print()
 
 # Create files to demonstrate importing from a directory
@@ -28,11 +29,11 @@ Path(foo, "bar4.py").write_text("print('Importing bar4')")
 
 # Changing sys.path temporarily
 with locate.prepend_sys_path("foo"):
-    print(f"I can temporarily import from: {locate.this_dir().joinpath('foo')}")
+    print(f"I can temporarily import from: {Path(this_dir, 'foo')}")
     import bar1
     print()
 
-print(f"I can no longer import from: {locate.this_dir().joinpath('foo')}")
+print(f"I can no longer import from: {Path(this_dir, 'foo')}")
 try:
     import bar2
 except ImportError:
@@ -41,7 +42,7 @@ print()
 
 # Changing sys.path permanently
 locate.prepend_sys_path("foo")
-print(f"I can now always import from: {locate.this_dir().joinpath('foo')}")
+print(f"I can now always import from: {Path(this_dir, 'foo')}")
 import bar3
 import bar4
 print()
