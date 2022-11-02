@@ -5,7 +5,7 @@ This library exposes three functions/callables
  - `append_sys_path(relative_path)` allows importing from a location relative to the running Python file by resolving `relative_path` relative to `this_dir()` and appending it to `sys.path` (e.g. `relative_path="../foo/bar"`); note the functionality is also available as a context manager to allow temporary effect (e.g. `with append_sys_path("foo"): ...`).
  - `prepend_sys_path(relative_path)` is the same as `append_sys_path`, but prepending `sys.path` in order to be the first import location for Python to search for modules/files.
   
-**Note:** the `*_sys_path` destructors (when exiting the with block) are safe from side effects that your package imports may have on `sys.path`. It isn't naive such as removing the first/last element or removing the element by value, but rather employs a string subclass with an additional `id` property to keep tags of `sys.path` insertions. It is therefore completely safe and allows for any further nesting of `with *_sys_path` within the import tree.
+**Note:** the `*_sys_path` destructors (when exiting the with block) are safe from any side effect your package imports may have on `sys.path`. It's not a naive implementation such as removing the first/last element or removing the element by value; it employs a string subclass with an additional `id` property to keep tags of `sys.path` insertions. It is, therefore, completely safe and allows for any further nesting of `with *_sys_path` within the import tree.
 
 ## Example use of this package
 ```
