@@ -8,20 +8,57 @@ This library exposes three functions/callables
 **Note:** the `*_sys_path` destructors (when exiting the with block) are safe from any side effect your package imports may have on `sys.path`. It's not a naive implementation such as removing the first/last element or removing the element by value; it employs a string subclass with an additional `id` property to keep tags of `sys.path` insertions. It is, therefore, completely safe and allows for any further nesting of `with *_sys_path` within the import tree.
 
 ## Example use of this package
-```
+### Input:
+```python
 import locate
+from pathlib import Path
 
 print(f"This file is located in: {locate.this_dir()}")
+print()
+
+# Create files to demonstrate importing from a directory
+foo = Path(locate.this_dir(), "foo")
+foo.mkdir(exist_ok=True)
+
+Path(foo, "bar1.py").write_text("print('Importing bar1')")
+Path(foo, "bar2.py").write_text("print('Importing bar2')")
+Path(foo, "bar3.py").write_text("print('Importing bar3')")
+Path(foo, "bar4.py").write_text("print('Importing bar4')")
+
 
 # Changing sys.path temporarily
 with locate.prepend_sys_path("foo"):
     print(f"I can temporarily import from: {locate.this_dir().joinpath('foo')}")
+    import bar1
+    print()
+
 print(f"I can no longer import from: {locate.this_dir().joinpath('foo')}")
+try:
+    import bar2
+except ImportError:
+    print("Cannot import bar2")
+print()
 
 # Changing sys.path permanently
 locate.prepend_sys_path("foo")
 print(f"I can now always import from: {locate.this_dir().joinpath('foo')}")
+import bar3
+import bar4
+print()
+```
+### Output:
+```
+This file is located in: C:\Users\simon
 
+I can temporarily import from: C:\Users\simon\foo
+Importing bar1
+
+I can no longer import from: C:\Users\simon\foo
+Cannot import bar2
+
+I can now always import from: C:\Users\simon\foo
+Importing bar3
+Importing bar4
 ```
 
 ## Motivation
