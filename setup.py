@@ -11,7 +11,7 @@ setuptools.setup(
     description="Locate the file location of your current running script.",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/heetbeet/locate",
+    url="https://github.com/AutoActuary/locate",
     packages=setuptools.find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
