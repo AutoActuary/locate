@@ -19,7 +19,7 @@ setuptools.setup(
     ],
     python_requires=">=3.4",
     use_scm_version={
-        "write_to": "excel_text/version.py",
+        "write_to": "locate/version.py",
     },
     setup_requires=[
         "setuptools_scm",
