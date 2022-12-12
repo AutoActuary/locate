@@ -29,14 +29,14 @@ def _this_dir(stack: List[inspect.FrameInfo]) -> Path:
         return Path(os.path.abspath(os.getcwd()))
 
 
-def this_dir() -> Path:
+def this_dir(*pathsegments) -> Path:
     """
     This function mimics the @__DIR__ macro from Julia: https://docs.julialang.org/en/v1/base/file/#Base.@__DIR__
     Get a directory location associated with the caller of this function. If the caller is calling from a source
     code file, return the full path of the directory of that file, otherwise return the full path of the current
     working directory.
     """
-    return _this_dir(inspect.stack())
+    return Path(_this_dir(inspect.stack()), *pathsegments)
 
 
 class append_sys_path:
