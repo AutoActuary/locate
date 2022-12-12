@@ -5,7 +5,6 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="locate",
-    version="1.1.0",
     author="Heetbeet",
     author_email="sfstreicher@gmail.com",
     description="Locate the file location of your current running script.",
@@ -19,5 +18,11 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     python_requires=">=3.4",
+    use_scm_version={
+        "write_to": "excel_text/version.py",
+    },
+    setup_requires=[
+        "setuptools_scm",
+    ],
     install_requires=[],
 )
