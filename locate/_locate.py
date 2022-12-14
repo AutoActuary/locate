@@ -7,13 +7,13 @@ import inspect
 import os
 import sys
 from pathlib import Path
-from typing import Union, List
+from typing import Union, List, Any
 import uuid
 import warnings
 
 
-class _StrWithAnID(str):
-    def __init__(self, *args, **kwargs):
+class StringWithId(str):
+    def __init__(self, arg: str) -> None:
         super().__init__()
         self.unique_id = uuid.uuid4()
 
@@ -49,15 +49,15 @@ class append_sys_path:
 
     def __init__(self, relative_path: Union[str, Path] = ".") -> None:
         # Use os.path.abspath rather than Path.resolve, since Path.resolve will resolve symlinks to their sources
-        self.added_path = _StrWithAnID(
+        self.added_path = StringWithId(
             os.path.abspath(Path(_this_dir(inspect.stack()), relative_path))
         )
         sys.path.append(self.added_path)
 
-    def __enter__(self):
+    def __enter__(self) -> None:
         pass
 
-    def __exit__(self, *args):
+    def __exit__(self, *args: Any) -> None:
         i = len(sys.path) - 1
         while i >= 0:
             if (
@@ -78,15 +78,15 @@ class prepend_sys_path:
 
     def __init__(self, relative_path: Union[str, Path] = ".") -> None:
         # Use os.path.abspath rather than Path.resolve, since Path.resolve will resolve symlinks to their sources
-        self.added_path = _StrWithAnID(
+        self.added_path = StringWithId(
             os.path.abspath(Path(_this_dir(inspect.stack()), relative_path))
         )
         sys.path.insert(0, self.added_path)
 
-    def __enter__(self):
+    def __enter__(self) -> None:
         pass
 
-    def __exit__(self, *args):
+    def __exit__(self, *args: Any) -> None:
         i = 0
         while i < len(sys.path):
             if (
