@@ -23,4 +23,4 @@ jobs:
 
       - name: Run MyPy
         run: |
-          mypy .
+          mypy locate
