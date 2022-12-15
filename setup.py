@@ -25,4 +25,9 @@ setuptools.setup(
         "setuptools_scm",
     ],
     install_requires=[],
+    package_data={
+        "": [
+            "py.typed",
+        ],
+    },
 )
